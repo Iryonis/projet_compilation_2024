@@ -46,7 +46,7 @@ rule token = parse
     | "Y"               { Y }
     | "Pi"              { PI }
     | "$<"              { DOLLAR_LESS }
-    | "$>"              { DOLLAR_GREATER }
+    | ">$"              { DOLLAR_GREATER }
     | "+"               { ADD }
     | "-"               { SUB }
     | "*"               { MUL }
