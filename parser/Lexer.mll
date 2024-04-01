@@ -10,6 +10,7 @@ let digit = ['0'-'9']
 let skip = [' ' '\t' '\r' '\n']
 
 rule token = parse
+    |'#'                { HASH } (*not sure*)
     | "And"             { AND }
     | "Blue"            { BLUE }
     | "Bool"            { BOOL }

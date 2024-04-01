@@ -64,15 +64,47 @@
 %token RPAR
 %token L_SQ_BRK
 %token R_SQ_BRK
+%token HASH(*not sure*)
 %token <int> INT
 %token <string> ID 
 %token <float> REAL
 
 
+%left ADD SUB
+%left MUL DIV MOD
 
+%right DOT DOUBLE_COLON 
 
 %start <program> main
 %%
 
 main:
 | EOF { Program([],Block([],Annotation.create $loc)) }
+
+
+expression:
+|L_SQ_BRK i = INT R_SQ_BRK{ Const_int(i,Annotation.create $loc) }
+|L_SQ_BRK f = REAL R_SQ_BRK{ Const_float(f,Annotation.create $loc) }
+| f = REAL { Const_float(float.PI,Annotation.create $loc) }
+|b = BOOL { Const_bool(b,Annotation.create $loc) }
+|L_SQ_BRK x = ID R_SQ_BRK { Var(x,Annotation.create $loc) }
+|COORD LPAR HASH x = expression HASH COMMA HASH y = expression HASH RPAR { Coord(x,y,Annotation.create $loc) }
+|COLOR LPAR HASH r = expression HASH COMMA HASH g = expression HASH COMMA HASH b = expression HASH RPAR { Color(r,g,b,Annotation.create $loc) }
+|PIXEL LPAR HASH x = expression HASH COMMA HASH y = expression HASH RPAR { Pixel(x,y,Annotation.create $loc) }
+|HASH x = expression HASH HASH op = binop HASH  HASH y = expression HASH { Binop(op,x,y,Annotation.create $loc) }
+
+
+%inline binop:
+|ADD {Plus}
+|SUB {Minus}
+|MUL {Times}
+|DIV {Div}
+|MOD {Rem}
+|AND {And}
+|OR  {Or}
+|EQ  {Equal}
+|NEQ {Diff}
+|LT  {Lt}
+|GT  {Gt}
+|LEQ {Leq}
+|GEQ {Geq}
