@@ -45,8 +45,8 @@ rule token = parse
     | "X"               { X }
     | "Y"               { Y }
     | "Pi"              { PI }
-    | "$<"              { DOLLAR_LESS }
-    | ">$"              { DOLLAR_GREATER }
+    | "$<"              { BLOCKOPEN }
+    | ">$"              { BLOCKCLOSE }
     | "+"               { ADD }
     | "-"               { SUB }
     | "*"               { MUL }

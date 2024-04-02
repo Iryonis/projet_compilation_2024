@@ -42,8 +42,8 @@
 %token X
 %token Y
 %token PI 
-%token DOLLAR_LESS
-%token DOLLAR_GREATER
+%token BLOCKIOPEN
+%token BLOCKCLOSE
 %token ADD
 %token SUB
 %token MUL 
