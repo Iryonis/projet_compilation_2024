@@ -104,7 +104,7 @@ expression:
 |L_SQ_BRK f = REAL R_SQ_BRK{ Const_float(f,Annotation.create $loc) }
 |f = REAL { Const_float(Float.pi,Annotation.create $loc) }
 |b = BOOL { Const_bool(b,Annotation.create $loc) }
-|L_SQ_BRK x = ID R_SQ_BRK { Var(x,Annotation.create $loc) }
+|L_SQ_BRK x = ID R_SQ_BRK { Variable(x,Annotation.create $loc) }
 |COORD LPAR x = expression COMMA y = expression RPAR { Coord(x,y,Annotation.create $loc) }
 |COLOR LPAR r = expression COMMA g = expression COMMA b = expression  RPAR { Color(r,g,b,Annotation.create $loc) }
 |PIXEL LPAR x = expression COMMA y = expression RPAR { Pixel(x,y,Annotation.create $loc) }
