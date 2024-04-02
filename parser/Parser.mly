@@ -88,7 +88,7 @@ program:
 
 
 argument:
-|t = Type COLON id = ID { [Argument(id,t,Annotation.create $loc)] }
+|t = type_expression COLON id = ID { [Argument(id,t,Annotation.create $loc)] }
 
 argumentList:
 |arg = argument { [arg] }
@@ -107,9 +107,9 @@ expression:
 |COORD LPAR x = expression COMMA y = expression RPAR { Coord(x,y,Annotation.create $loc) }
 |COLOR LPAR r = expression COMMA g = expression COMMA b = expression  RPAR { Color(r,g,b,Annotation.create $loc) }
 |PIXEL LPAR x = expression COMMA y = expression RPAR { Pixel(x,y,Annotation.create $loc) }
-|expr1 = expression op = binop expr2 = expression { Binop(op, expr1, expr2,Annotation.create $loc) }
-|op = unop expr1 = expression { Unop(op, expr1,Annotation.create $loc) }
-|expr1 = expression DOT f = field { Field_accessor(f, expr1,Annotation.create $loc) }
+|expr1 = expression op = binary_operator expr2 = expression { Binop(op, expr1, expr2,Annotation.create $loc) }
+|op = unary_operator expr1 = expression { Unop(op, expr1,Annotation.create $loc) }
+|expr1 = expression DOT f = field_accessor { Field_accessor(f, expr1,Annotation.create $loc) }
 |L_SQ_BRK exprList = expressionList R_SQ_BRK { List(exprList,Annotation.create $loc) }
 |expr1 = expression DOUBLE_COLON expr2 = expression { Cons(expr1,expr2,Annotation.create $loc) }
 |LPAR expr = expression RPAR { expr }
@@ -119,7 +119,7 @@ expressionList:
 |expr = expression COMMA exprList = expressionList { expr::exprList }
 
 
-%inline binop:
+%inline binary_operator:
 |ADD {Plus}
 |SUB {Minus}
 |MUL {Times}
@@ -135,7 +135,7 @@ expressionList:
 |GEQ {Geq}
 
 
-%inline Type:
+%inline type_expression:
 |INTTYPE { Type_int }
 |REALTYPE { Type_real }
 |BOOL { Type_bool }
@@ -144,7 +144,7 @@ expressionList:
 |PIXEL { Type_pixel }
 |LIST LPAR t = Type RPAR { Type_list(t) }
 
-%inline unop:
+%inline unary_operator:
 |SUB {Opposite}
 |NOT {Not}
 |HEAD {Head}
@@ -154,7 +154,7 @@ expressionList:
 |SIN {Sin}
 |COS {Cos}
 
-%inline field:
+%inline field_accessor:
 |COLOR {Color_field}
 |COORD {Coord_field}
 |X {X_field}
