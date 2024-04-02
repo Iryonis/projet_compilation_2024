@@ -91,8 +91,8 @@ argument:
 |t = type_expression COLON id = ID { [Argument(id,t,Annotation.create $loc)] }
 
 argumentList:
-|arg = argument { [arg] }
-|arg = argument COMMA argList = argumentList { arg::argList }
+|{ [] }
+|arg = argument argList = argumentList { arg::argList }
 
 statement:
 | {}
@@ -115,8 +115,8 @@ expression:
 |LPAR expr = expression RPAR { expr }
 
 expressionList:
-|expr = expression { [expr] }
-|expr = expression COMMA exprList = expressionList { expr::exprList }
+|{[]}
+|expr = expression exprList = expressionList { expr::exprList }
 
 
 %inline binary_operator:
@@ -142,7 +142,7 @@ expressionList:
 |COORD { Type_coord }
 |COLOR { Type_color }
 |PIXEL { Type_pixel }
-|LIST LPAR t = Type RPAR { Type_list(t) }
+|LIST LPAR t = type_expression RPAR { Type_list(t) }
 
 %inline unary_operator:
 |SUB {Opposite}
