@@ -92,7 +92,8 @@ argument:
 
 argumentList:
 |{ [] }
-|arg = argument argList = argumentList { arg::argList }
+|arg = argument { [arg] }
+|arg = argument SEMICOLON argList = argumentList { arg::argList }
 
 statement:
 | {}
@@ -116,7 +117,8 @@ expression:
 
 expressionList:
 |{[]}
-|expr = expression exprList = expressionList { expr::exprList }
+|expr = expression {[expr]}
+|expr = expression COMMA exprList = expressionList { expr::exprList }
 
 
 %inline binary_operator:
