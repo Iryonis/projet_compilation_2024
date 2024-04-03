@@ -42,7 +42,7 @@
 %token X
 %token Y
 %token PI 
-%token BLOCKIOPEN
+%token BLOCKOPEN
 %token BLOCKCLOSE
 %token ADD
 %token SUB
@@ -68,99 +68,118 @@
 %token <string> ID 
 %token <float> REAL
 
+(* If without else *)
+%nonassoc IfThen
+%nonassoc ELSE
 
+(* Binary_operator *)
+%left OR
+%left AND
+%nonassoc EQ NEQ LT GT LEQ GEQ
 %left ADD SUB
 %left MUL DIV MOD
 
+(* . and :: *)
 %right DOT DOUBLE_COLON 
+
+(* Unary_operator *)
+%nonassoc Unop
 
 %start <program> main
 %%
 
 main:
-|p = program EOF { Progam p }
-|e = expression EOF { Expression e }
-| EOF { Program([],Block([],Annotation.create $loc)) }
+| p = program EOF { p }
 
 program:
-|LT listOfArgs = argumentList GT stmt = statement { Program(listOfArgs,stmt) }
-|stmt = statement { Program([],stmt) }
-
+| LT arg_list = argument_list GT stmt = statement { Program(arg_list,stmt) }
+| stmt = statement { Program([],stmt) }
 
 argument:
-|t = type_expression COLON id = ID { [Argument(id,t,Annotation.create $loc)] }
+| t = type_expression COLON id = ID { Argument(id,t,Annotation.create $loc) }
 
-argumentList:
-|{ [] }
-|arg = argument { [arg] }
-|arg = argument SEMICOLON argList = argumentList { arg::argList }
+argument_list:
+| { [] }
+| arg = argument { [arg] }
+| arg = argument SEMICOLON arg_list = argument_list { arg::arg_list }
 
 statement:
-| {}
-(*to do*)
+| SET LPAR expr1 = expression COMMA expr2 = expression RPAR { Affectation(expr1,expr2,Annotation.create $loc) }
+| t = type_expression COLON id = ID { Declaration(id,t,Annotation.create $loc) } 
+| BLOCKOPEN stmt_list = statement_list BLOCKCLOSE { Block(stmt_list,Annotation.create $loc) }
+| IF LPAR test = expression RPAR stmt1 = statement ELSE stmt2 = statement { IfThenElse(test,stmt1,stmt2,Annotation.create $loc) }
+| IF LPAR test = expression RPAR stmt = statement %prec IfThen { IfThenElse(test,stmt, Nop, Annotation.create $loc) }
+| FOR id = ID FROM expr1 = expression TO expr2 = expression STEP expr3 = expression stmt = statement { For(id,expr1, expr2, expr3,stmt,Annotation.create $loc) }
+| FOREACH id = ID IN expr = expression stmt = statement { Foreach(id,expr,stmt,Annotation.create $loc) }
+| DRAW LPAR expr = expression RPAR { Draw_pixel(expr,Annotation.create $loc) }
+| PRINT LPAR expr = expression RPAR { Print(expr,Annotation.create $loc) }
+| { Nop }
+
+statement_list:
+| stmt = statement { [stmt] }
+| stmt = statement SEMICOLON stmt_list = statement_list { stmt::stmt_list }
 
 expression:
-|L_SQ_BRK i = INT R_SQ_BRK{ Const_int(i,Annotation.create $loc) }
-|L_SQ_BRK f = REAL R_SQ_BRK{ Const_float(f,Annotation.create $loc) }
-|f = REAL { Const_float(Float.pi,Annotation.create $loc) }
-|b = BOOL { Const_bool(b,Annotation.create $loc) }
-|L_SQ_BRK x = ID R_SQ_BRK { Variable(x,Annotation.create $loc) }
-|COORD LPAR x = expression COMMA y = expression RPAR { Coord(x,y,Annotation.create $loc) }
-|COLOR LPAR r = expression COMMA g = expression COMMA b = expression  RPAR { Color(r,g,b,Annotation.create $loc) }
-|PIXEL LPAR x = expression COMMA y = expression RPAR { Pixel(x,y,Annotation.create $loc) }
-|expr1 = expression op = binary_operator expr2 = expression { Binop(op, expr1, expr2,Annotation.create $loc) }
-|op = unary_operator expr1 = expression { Unop(op, expr1,Annotation.create $loc) }
-|expr1 = expression DOT f = field_accessor { Field_accessor(f, expr1,Annotation.create $loc) }
-|L_SQ_BRK exprList = expressionList R_SQ_BRK { List(exprList,Annotation.create $loc) }
-|expr1 = expression DOUBLE_COLON expr2 = expression { Cons(expr1,expr2,Annotation.create $loc) }
-|LPAR expr = expression RPAR { expr }
+| i = INT { Const_int(i,Annotation.create $loc) }
+| r = REAL { Const_real(r,Annotation.create $loc) }
+| PI { Const_real(Float.pi,Annotation.create $loc) }
+| TRUE { Const_bool(true,Annotation.create $loc) }
+| FALSE { Const_bool(false,Annotation.create $loc) }
+| L_SQ_BRK id = ID R_SQ_BRK { Variable(id,Annotation.create $loc) }
+| COORD LPAR expr1 = expression COMMA expr2 = expression RPAR { Coord(expr1,expr2,Annotation.create $loc) }
+| COLOR LPAR expr1 = expression COMMA expr2 = expression COMMA expr3 = expression  RPAR { Color(expr1,expr2,expr3,Annotation.create $loc) }
+| PIXEL LPAR expr1 = expression COMMA expr2 = expression RPAR { Pixel(expr1,expr2,Annotation.create $loc) }
+| expr1 = expression op = binary_operator expr2 = expression { Binary_operator(op, expr1, expr2,Annotation.create $loc) }
+| op = unary_operator expr = expression %prec Unop { Unary_operator(op, expr,Annotation.create $loc) }
+| expr = expression DOT f = field_accessor { Field_accessor(f, expr,Annotation.create $loc) }
+| L_SQ_BRK expr_list = expression_list R_SQ_BRK { List(expr_list,Annotation.create $loc) }
+| expr1 = expression DOUBLE_COLON expr2 = expression { Append(expr1,expr2,Annotation.create $loc) }
+| LPAR expr = expression RPAR { expr }
 
-expressionList:
-|{[]}
-|expr = expression {[expr]}
-|expr = expression COMMA exprList = expressionList { expr::exprList }
-
+expression_list:
+| expr = expression { [expr] }
+| expr = expression COMMA expr_list = expression_list { expr::expr_list }
+| { [] }
 
 %inline binary_operator:
-|ADD {Plus}
-|SUB {Minus}
-|MUL {Times}
-|DIV {Div}
-|MOD {Rem}
-|AND {And}
-|OR  {Or}
-|EQ  {Equal}
-|NEQ {Diff}
-|LT  {Lt}
-|GT  {Gt}
-|LEQ {Leq}
-|GEQ {Geq}
-
-
-%inline type_expression:
-|INTTYPE { Type_int }
-|REALTYPE { Type_real }
-|BOOL { Type_bool }
-|COORD { Type_coord }
-|COLOR { Type_color }
-|PIXEL { Type_pixel }
-|LIST LPAR t = type_expression RPAR { Type_list(t) }
+| ADD {Plus}
+| SUB {Minus}
+| MUL {Times}
+| DIV {Div}
+| MOD {Rem}
+| AND {And}
+| OR  {Or}
+| EQ  {Equal}
+| NEQ {Diff}
+| LT  {Lt}
+| GT  {Gt}
+| LEQ {Leq}
+| GEQ {Geq}
 
 %inline unary_operator:
-|SUB {Opposite}
-|NOT {Not}
-|HEAD {Head}
-|TAIL {Tail}
-|FLOOR {Floor}
-|REAL_OF_INT {Real_of_int}
-|SIN {Sin}
-|COS {Cos}
+| SUB {Opposite}
+| NOT {Not}
+| HEAD {Head}
+| TAIL {Tail}
+| FLOOR {Floor}
+| REAL_OF_INT {Real_of_int}
+| COS {Cos}
+| SIN {Sin}
 
 %inline field_accessor:
-|COLOR {Color_field}
-|COORD {Coord_field}
-|X {X_field}
-|Y {Y_field}
-|RED {Red_field}
-|GREEN {Green_field}
-|BLUE {Blue_field}
+| COLOR {Color_field}
+| COORD {Coord_field}
+| X {X_field}
+| Y {Y_field}
+| RED {Red_field}
+| GREEN {Green_field}
+| BLUE {Blue_field}
+
+type_expression:
+| INTTYPE { Type_int }
+| REALTYPE { Type_real }
+| BOOL { Type_bool }
+| COORD { Type_coord }
+| COLOR { Type_color }
+| PIXEL { Type_pixel }
+| LIST LPAR t = type_expression RPAR { Type_list(t) }
