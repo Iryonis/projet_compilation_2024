@@ -125,7 +125,7 @@ expression:
 | PI { Const_real(Float.pi,Annotation.create $loc) }
 | TRUE { Const_bool(true,Annotation.create $loc) }
 | FALSE { Const_bool(false,Annotation.create $loc) }
-| L_SQ_BRK id = ID R_SQ_BRK { Variable(id,Annotation.create $loc) }
+| id = ID  { Variable(id,Annotation.create $loc) }
 | COORD LPAR expr1 = expression COMMA expr2 = expression RPAR { Coord(expr1,expr2,Annotation.create $loc) }
 | COLOR LPAR expr1 = expression COMMA expr2 = expression COMMA expr3 = expression  RPAR { Color(expr1,expr2,expr3,Annotation.create $loc) }
 | PIXEL LPAR expr1 = expression COMMA expr2 = expression RPAR { Pixel(expr1,expr2,Annotation.create $loc) }
