@@ -16,10 +16,18 @@
 *)
 open Ast
 
-let simplifier (program : Ast.program) = program
-
-let rec simplify_expression expr =
+let rec simplify_expression (expr : Ast.expression) =
   match expr with
+  | Coord (x, y, annotation) ->
+      Coord (simplify_expression x, simplify_expression y, annotation)
+  | Color (r, g, b, annotation) ->
+      Color
+        ( simplify_expression r,
+          simplify_expression g,
+          simplify_expression b,
+          annotation )
+  | Pixel (coord, color, annotation) ->
+      Pixel (simplify_expression coord, simplify_expression color, annotation)
   | Unary_operator (op, e, annotation) -> (
       let simplified_e = simplify_expression e in
       match simplified_e with
@@ -27,27 +35,21 @@ let rec simplify_expression expr =
           match op with
           | Opposite -> Const_int (-i, annotation)
           | Real_of_int -> Const_real (float_of_int i, annotation)
-          | _ -> failwith "undefined")
+          | _ -> Unary_operator (op, simplified_e, annotation))
       | Const_real (r, _) -> (
           match op with
           | Opposite -> Const_real (-.r, annotation)
           | Floor -> Const_int (int_of_float r, annotation)
           | Cos -> Const_real (Float.cos r, annotation)
           | Sin -> Const_real (Float.sin r, annotation)
-          | _ -> failwith "undefined")
+          | _ -> Unary_operator (op, simplified_e, annotation))
       | Const_bool (b, _) -> (
           match op with
           | Not -> Const_bool (not b, annotation)
-          | _ -> failwith "undefined")
-      | List (l, _) -> (
-          match op with
-          | Head -> simplify_expression (List.hd l)
-          | Tail ->
-              List
-                ( List.map (fun e -> simplify_expression e) (List.tl l),
-                  annotation )
-          | _ -> failwith "undefined")
-      | _ -> expr)
+          | _ -> Unary_operator (op, simplified_e, annotation))
+      | List (l, _) ->
+          List (List.map (fun e -> simplify_expression e) l, annotation)
+      | _ -> Unary_operator (op, simplified_e, annotation))
   | Binary_operator (op, e1, e2, annotation) -> (
       let simplified_e1 = simplify_expression e1 in
       match simplified_e1 with
@@ -67,69 +69,31 @@ let rec simplify_expression expr =
               | Gt -> Const_bool (i1 > i2, annotation)
               | Leq -> Const_bool (i1 <= i2, annotation)
               | Geq -> Const_bool (i1 >= i2, annotation)
-              | _ -> failwith "undefined")
-          | Coord (Const_int (x, _), Const_int (y, _), _) -> (
-              match op with
-              | Plus ->
-                  Coord
-                    ( simplify_expression (Const_int (i1 + x, annotation)),
-                      simplify_expression (Const_int (i1 + y, annotation)),
-                      annotation )
-              | Minus ->
-                  Coord
-                    ( simplify_expression (Const_int (i1 - x, annotation)),
-                      simplify_expression (Const_int (i1 - y, annotation)),
-                      annotation )
-              | Times ->
-                  Coord
-                    ( simplify_expression (Const_int (i1 * x, annotation)),
-                      simplify_expression (Const_int (i1 * y, annotation)),
-                      annotation )
-              | Div ->
-                  Coord
-                    ( simplify_expression (Const_int (i1 / x, annotation)),
-                      simplify_expression (Const_int (i1 / y, annotation)),
-                      annotation )
-              | Rem ->
-                  Coord
-                    ( simplify_expression (Const_int (i1 mod x, annotation)),
-                      simplify_expression (Const_int (i1 mod y, annotation)),
-                      annotation )
-              | _ -> failwith "undefined")
-          | Color (Const_int (r, _), Const_int (g, _), Const_int (b, _), _) -> (
-              match op with
-              | Plus ->
-                  Color
-                    ( simplify_expression (Const_int (i1 + r, annotation)),
-                      simplify_expression (Const_int (i1 + g, annotation)),
-                      simplify_expression (Const_int (i1 + b, annotation)),
-                      annotation )
-              | Minus ->
-                  Color
-                    ( simplify_expression (Const_int (i1 - r, annotation)),
-                      simplify_expression (Const_int (i1 - g, annotation)),
-                      simplify_expression (Const_int (i1 - b, annotation)),
-                      annotation )
-              | Times ->
-                  Color
-                    ( simplify_expression (Const_int (i1 * r, annotation)),
-                      simplify_expression (Const_int (i1 * g, annotation)),
-                      simplify_expression (Const_int (i1 * b, annotation)),
-                      annotation )
-              | Div ->
-                  Color
-                    ( simplify_expression (Const_int (i1 / r, annotation)),
-                      simplify_expression (Const_int (i1 / g, annotation)),
-                      simplify_expression (Const_int (i1 / b, annotation)),
-                      annotation )
-              | Rem ->
-                  Color
-                    ( simplify_expression (Const_int (i1 mod r, annotation)),
-                      simplify_expression (Const_int (i1 mod g, annotation)),
-                      simplify_expression (Const_int (i1 mod b, annotation)),
-                      annotation )
-              | _ -> failwith "undefined")
-          | _ -> failwith "undefined")
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
+          | Coord (x, y, _) ->
+              Coord
+                ( simplify_expression
+                    (Binary_operator
+                       (op, Const_int (i1, annotation), x, annotation)),
+                  simplify_expression
+                    (Binary_operator
+                       (op, Const_int (i1, annotation), y, annotation)),
+                  annotation )
+          | Color (r, g, b, _) ->
+              Color
+                ( simplify_expression
+                    (Binary_operator
+                       (op, Const_int (i1, annotation), r, annotation)),
+                  simplify_expression
+                    (Binary_operator
+                       (op, Const_int (i1, annotation), g, annotation)),
+                  simplify_expression
+                    (Binary_operator
+                       (op, Const_int (i1, annotation), b, annotation)),
+                  annotation )
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Const_real (r1, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
@@ -146,8 +110,10 @@ let rec simplify_expression expr =
               | Gt -> Const_bool (r1 > r2, annotation)
               | Leq -> Const_bool (r1 <= r2, annotation)
               | Geq -> Const_bool (r1 >= r2, annotation)
-              | _ -> failwith "undefined")
-          | _ -> failwith "undefined")
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Const_bool (b1, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
@@ -161,8 +127,10 @@ let rec simplify_expression expr =
               | Geq -> Const_bool (b1 >= b2, annotation)
               | And -> Const_bool (b1 && b2, annotation)
               | Or -> Const_bool (b1 || b2, annotation)
-              | _ -> failwith "undefined")
-          | _ -> failwith "undefined")
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Coord (x, y, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
@@ -180,7 +148,7 @@ let rec simplify_expression expr =
                 ( simplify_expression (Binary_operator (op, x, x2, annotation)),
                   simplify_expression (Binary_operator (op, y, y2, annotation)),
                   annotation )
-          | _ -> failwith "undefined")
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Color (r, g, b, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
@@ -202,7 +170,7 @@ let rec simplify_expression expr =
                   simplify_expression (Binary_operator (op, g, g2, annotation)),
                   simplify_expression (Binary_operator (op, b, b2, annotation)),
                   annotation )
-          | _ -> failwith "undefined")
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Pixel (coord1, color1, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
@@ -213,103 +181,97 @@ let rec simplify_expression expr =
                   simplify_expression
                     (Binary_operator (op, color1, color2, annotation)),
                   annotation )
-          | _ -> failwith "undefined")
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | List (l, _) -> (
           let simplified_e2 = simplify_expression e2 in
           match simplified_e2 with
           | List (l2, _) -> (
               match op with
               | Plus -> List (l @ l2, annotation)
-              | _ -> failwith "undefined")
-          | _ -> failwith "undefined")
-      | _ -> failwith "undefined")
-  | _ -> failwith "undefined"
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
+      | _ ->
+          Binary_operator (op, simplified_e1, simplify_expression e2, annotation)
+      )
+  | Field_accessor (field, e, annotation) -> (
+      let simplified_e = simplify_expression e in
+      match simplified_e with
+      | Pixel (coord, color, _) -> (
+          match field with
+          | Color_field -> simplify_expression color
+          | Coord_field -> simplify_expression coord
+          | _ -> Field_accessor (field, simplified_e, annotation))
+      | Coord (x, y, _) -> (
+          match field with
+          | X_field -> simplify_expression x
+          | Y_field -> simplify_expression y
+          | _ -> Field_accessor (field, simplified_e, annotation))
+      | Color (r, g, b, _) -> (
+          match field with
+          | Red_field -> simplify_expression r
+          | Green_field -> simplify_expression g
+          | Blue_field -> simplify_expression b
+          | _ -> Field_accessor (field, simplified_e, annotation))
+      | _ -> Field_accessor (field, simplified_e, annotation))
+  | Append (e, l, annotation) -> (
+      let simplified_e = simplify_expression e in
+      let simplified_l = simplify_expression l in
+      match simplified_l with
+      | List (list, _) -> List (simplified_e :: list, annotation)
+      | _ -> Append (simplified_e, simplified_l, annotation))
+  | _ -> expr
 
-(*let rec simplify_expr expr =
-    match expr with
-    | Binop (op, e1, e2, annotation) -> (
-        let simplified_e1 = simplify_expr e1 in
-        match simplified_e1 with
-        | Cst_i (i1, _) -> (
-            let simplified_e2 = simplify_expr e2 in
-            match simplified_e2 with
-            | Cst_i (i2, _) -> (
-                match op with
-                | Add -> Cst_i (i1 + i2, annotation)
-                | Sub -> Cst_i (i1 - i2, annotation)
-                | Mul -> Cst_i (i1 * i2, annotation)
-                | Div -> Cst_i (i1 / i2, annotation)
-                | Mod -> Cst_i (i1 mod i2, annotation)
-                | Eq -> Cst_b (i1 = i2, annotation)
-                | Neq -> Cst_b (i1 <> i2, annotation)
-                | Lt -> Cst_b (i1 < i2, annotation)
-                | Gt -> Cst_b (i1 > i2, annotation)
-                | Leq -> Cst_b (i1 = i2 && i1 < i2, annotation)
-                | Geq -> Cst_b (i1 = i2 && i1 > i2, annotation)
-                | _ -> failwith "undefined")
-            | _ -> failwith "undefined")
-        | Cst_f (f1, _) -> (
-            let simplified_e2 = simplify_expr e2 in
-            match simplified_e2 with
-            | Cst_f (f2, _) -> (
-                match op with
-                | Add -> Cst_f (f1 +. f2, annotation)
-                | Sub -> Cst_f (f1 -. f2, annotation)
-                | Mul -> Cst_f (f1 *. f2, annotation)
-                | Div -> Cst_f (f1 /. f2, annotation)
-                | Mod -> Cst_f (mod_float f1 f2, annotation)
-                | Eq -> Cst_b (f1 = f2, annotation)
-                | Neq -> Cst_b (f1 <> f2, annotation)
-                | Lt -> Cst_b (f1 < f2, annotation)
-                | Gt -> Cst_b (f1 > f2, annotation)
-                | Leq -> Cst_b (f1 = f2 && f1 < f2, annotation)
-                | Geq -> Cst_b (f1 = f2 && f1 > f2, annotation)
-                | _ -> failwith "undefined")
-            | _ -> failwith "undefined")
-        | Cst_b (b1, _) -> (
-            let simplified_e2 = simplify_expr e2 in
-            match simplified_e2 with
-            | Cst_b (b2, _) -> (
-                match op with
-                | And -> Cst_b (b1 && b2, annotation)
-                | Or -> Cst_b (b1 || b2, annotation)
-                | Eq -> Cst_b (b1 = b2, annotation)
-                | Neq -> Cst_b (b1 <> b2, annotation)
-                | Lt -> Cst_b (b1 < b2, annotation)
-                | Gt -> Cst_b (b1 > b2, annotation)
-                | Leq -> Cst_b (b1 = b2 && b1 < b2, annotation)
-                | Geq -> Cst_b (b1 = b2 && b1 > b2, annotation)
-                | _ -> failwith "undefined")
-            | _ -> failwith "undefined")
-        | _ -> failwith "undefined")
-    | _ -> expr
+let rec simplify_statement (statement : Ast.statement) =
+  match statement with
+  | Affectation (var, expr, annotation) ->
+      Affectation (var, simplify_expression expr, annotation)
+  | Block (l, annotation) ->
+      Block (List.map (fun s -> simplify_statement s) l, annotation)
+  | IfThenElse (test, i_then, i_else, annotation) -> (
+      let simplified_test = simplify_expression test in
+      match simplified_test with
+      | Const_bool (true, _) -> simplify_statement i_then
+      | Const_bool (false, _) -> simplify_statement i_else
+      | _ -> IfThenElse (simplified_test, i_then, i_else, annotation))
+  | For (name, init, target, increment, body, annotation) -> (
+      let simplified_init = simplify_expression init in
+      let simplified_target = simplify_expression target in
+      let simplified_increment = simplify_expression increment in
+      match (simplified_init, simplified_target) with
+      | Const_int (start, _), Const_int (end_, _) ->
+          if start > end_ then Block ([], annotation)
+          else
+            For
+              ( name,
+                simplified_init,
+                simplified_target,
+                simplified_increment,
+                simplify_statement body,
+                annotation )
+      | _ ->
+          For
+            ( name,
+              simplified_init,
+              simplified_target,
+              simplified_increment,
+              simplify_statement body,
+              annotation ))
+  | Foreach (name, list, body, annotation) -> (
+      let simplified_list = simplify_expression list in
+      match simplified_list with
+      | List (l, _) -> (
+          match l with
+          | [] -> Block ([], annotation)
+          | _ -> Foreach (name, simplified_list, body, annotation))
+      | _ -> Foreach (name, simplified_list, body, annotation))
+  | Draw_pixel (expr, annotation) ->
+      Draw_pixel (simplify_expression expr, annotation)
+  | Print (expr, annotation) -> Print (simplify_expression expr, annotation)
+  | _ -> statement
 
-  let rec simplify_instruction instruction =
-    match instruction with
-    | Affect (name, expr, annotation) ->
-        let simplified_expr = simplify_expr expr in
-        Affect (name, simplified_expr, annotation)
-    | IfThenElse (test, i_then, i_else, annotation) -> (
-        let simplified_expr = simplify_expr test in
-        match simplified_expr with
-        | Cst_b (true, _) -> simplify_instruction i_then
-        | Cst_b (false, _) -> simplify_instruction i_else
-        | _ ->
-            IfThenElse
-              ( simplified_expr,
-                simplify_instruction i_then,
-                simplify_instruction i_else,
-                annotation ))
-    | While (test, body, annotation) -> (
-        let simplified_expr = simplify_expr test in
-        match simplified_expr with
-        | Cst_b (false, annotation) -> Block ([], annotation)
-        | _ -> While (simplify_expr test, body, annotation))
-    | Print_expr (expr, annotation) ->
-        let simplified_expr = simplify_expr expr in
-        Print_expr (simplified_expr, annotation)
-    | _ -> instruction
-
-  let simplify_func_decl = function
-    | Func_decl (typ, name, args, body, annotation) ->
-        Func_decl (typ, name, args, simplify_instruction body, annotation)*)
+let simplifier (program : Ast.program) =
+  match program with
+  | Program (arg_list, statement) ->
+      Program (arg_list, simplify_statement statement)
