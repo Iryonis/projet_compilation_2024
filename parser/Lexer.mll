@@ -67,6 +67,10 @@ rule token = parse
     | ")"               { RPAR }
     | "["               { L_SQ_BRK }
     | "]"               { R_SQ_BRK }
+    (* Extension *)
+    | "?"               { QUESTION }
+    | "**2"              { POW2 }
+    (* Fin de l'extension *)
     (*ID*)
     | (alphamin)+ (alphanum)* as s { ID s } 
     (*INT*)

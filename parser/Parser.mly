@@ -64,6 +64,10 @@
 %token RPAR
 %token L_SQ_BRK
 %token R_SQ_BRK
+(* Extension *)
+%token QUESTION
+%token POW2
+(* Fin de Extension *)
 %token <int> INT
 %token <string> ID 
 %token <float> REAL
@@ -78,6 +82,7 @@
 %nonassoc EQ NEQ LT GT LEQ GEQ
 %left ADD SUB
 %left MUL DIV MOD
+%left POW2
 
 (* . and :: *)
 %right DOT DOUBLE_COLON 
@@ -107,6 +112,7 @@ statement:
 | SET LPAR expr1 = expression COMMA expr2 = expression RPAR { Affectation(expr1,expr2,Annotation.create $loc) }
 | t = type_expression COLON id = ID { Declaration(id,t,Annotation.create $loc) } 
 | BLOCKOPEN stmt_list = statement_list BLOCKCLOSE { Block(stmt_list,Annotation.create $loc) }
+| LPAR test = expression RPAR QUESTION stmt1 = statement COLON stmt2 = statement { IfThenElse(test,stmt1,stmt2,Annotation.create $loc) }
 | IF LPAR test = expression RPAR stmt1 = statement ELSE stmt2 = statement { IfThenElse(test,stmt1,stmt2,Annotation.create $loc) }
 | IF LPAR test = expression RPAR stmt = statement %prec IfThen { IfThenElse(test,stmt, Nop, Annotation.create $loc) }
 | FOR id = ID FROM expr1 = expression TO expr2 = expression STEP expr3 = expression stmt = statement { For(id,expr1, expr2, expr3,stmt,Annotation.create $loc) }
@@ -129,6 +135,7 @@ expression:
 | COORD LPAR expr1 = expression COMMA expr2 = expression RPAR { Coord(expr1,expr2,Annotation.create $loc) }
 | COLOR LPAR expr1 = expression COMMA expr2 = expression COMMA expr3 = expression  RPAR { Color(expr1,expr2,expr3,Annotation.create $loc) }
 | PIXEL LPAR expr1 = expression COMMA expr2 = expression RPAR { Pixel(expr1,expr2,Annotation.create $loc) }
+| expr = expression POW2 { Binary_operator(Times,expr,expr,Annotation.create $loc) }
 | expr1 = expression op = binary_operator expr2 = expression { Binary_operator(op, expr1, expr2,Annotation.create $loc) }
 | op = unary_operator expr = expression %prec Unop { Unary_operator(op, expr,Annotation.create $loc) }
 | expr = expression DOT f = field_accessor { Field_accessor(f, expr,Annotation.create $loc) }
