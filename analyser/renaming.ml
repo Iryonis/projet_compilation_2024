@@ -93,45 +93,45 @@ let rec rename_statement statement env =
           rename_statement el el_copy,
           annotation )
   | For (id, expr1, expr2, expr3, statement, annotation) -> (
-      let statement_copy = Environment.copy env in
+      let env_copy = Environment.copy env in
       match Environment.get env id with
       | None ->
-          Environment.add statement_copy id 0;
+          Environment.add env_copy id 0;
           For
             ( id,
               rename_expr expr1 env,
               rename_expr expr2 env,
               rename_expr expr3 env,
-              rename_statement statement statement_copy,
+              rename_statement statement env_copy,
               annotation )
       | Some i ->
-          Environment.modify statement_copy id (i + 1);
+          Environment.modify env_copy id (i + 1);
           For
             ( id ^ "#" ^ string_of_int (i + 1),
               rename_expr expr1 env,
               rename_expr expr2 env,
               rename_expr expr3 env,
-              rename_statement statement statement_copy,
+              rename_statement statement env_copy,
               annotation ))
-  |While(test, statement, annotation) -> (
-      let statement_copy = Environment.copy env in
-      While(rename_expr test env, rename_statement statement statement_copy, annotation))
+  |While(test, body, annotation) -> (
+      let env_copy = Environment.copy env in
+      While(rename_expr test env, rename_statement body env_copy, annotation))
   | Foreach (id, test, body, annotation) -> (
-      let body_env = Environment.copy env in
+      let env_copy = Environment.copy env in
       match Environment.get env id with
       | None ->
-          Environment.add body_env id 0;
+          Environment.add env_copy id 0;
           Foreach
             ( id,
               rename_expr test env,
-              rename_statement body body_env,
+              rename_statement body env_copy,
               annotation )
       | Some i ->
-          Environment.modify body_env id (i + 1);
+          Environment.modify env_copy id (i + 1);
           Foreach
             ( id ^ "#" ^ string_of_int (i + 1),
               rename_expr test env,
-              rename_statement body body_env,
+              rename_statement body env_copy,
               annotation ))
   | Draw_pixel (expr, annotation) ->
       Draw_pixel (rename_expr expr env, annotation)
