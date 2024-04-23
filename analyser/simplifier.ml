@@ -16,6 +16,22 @@
 *)
 open Ast
 
+let get_annotation_type (expr : Ast.expression) =
+  match expr with
+  | Const_int (_, a)
+  | Const_real (_, a)
+  | Const_bool (_, a)
+  | Coord (_, _, a)
+  | Color (_, _, _, a)
+  | Pixel (_, _, a)
+  | Variable (_, a)
+  | Binary_operator (_, _, _, a)
+  | Unary_operator (_, _, a)
+  | Field_accessor (_, _, a)
+  | List (_, a)
+  | Append (_, _, a) ->
+      Annotation.get_type a
+
 let rec simplify_expression (expr : Ast.expression) =
   match expr with
   | Coord (x, y, annotation) ->
@@ -219,9 +235,44 @@ let rec simplify_expression (expr : Ast.expression) =
               | _ ->
                   Binary_operator (op, simplified_e1, simplified_e2, annotation)
               )
+          | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation)
+          (*Cast implicite*))
+      | _ -> (
+          let simplified_e2 = simplify_expression e2 in
+          match get_annotation_type e1 with
+          | Some Type_int -> (
+              match get_annotation_type e2 with
+              | Some Type_real ->
+                  let a =
+                    Annotation.create (Lexing.dummy_pos, Lexing.dummy_pos)
+                    (*On ne savait pas comment mettre une position vide*)
+                  in
+                  let _ = Annotation.set_type a Type_real in
+                  Binary_operator
+                    ( op,
+                      Unary_operator (Real_of_int, simplified_e1, a),
+                      simplified_e2,
+                      annotation )
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
+          | Some Type_real -> (
+              match get_annotation_type e2 with
+              | Some Type_int ->
+                  let a =
+                    Annotation.create (Lexing.dummy_pos, Lexing.dummy_pos)
+                    (*On ne savait pas comment mettre une position vide*)
+                  in
+                  let _ = Annotation.set_type a Type_real in
+                  Binary_operator
+                    ( op,
+                      simplified_e1,
+                      Unary_operator (Real_of_int, simplified_e2, a),
+                      annotation )
+              | _ ->
+                  Binary_operator (op, simplified_e1, simplified_e2, annotation)
+              )
           | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
-      | _ ->
-          Binary_operator (op, simplified_e1, simplify_expression e2, annotation)
       )
   | Field_accessor (field, e, annotation) -> (
       let simplified_e = simplify_expression e in
@@ -282,7 +333,7 @@ let rec simplify_statement (statement : Ast.statement) =
       | Const_real (start, _), Const_real (end_, _) ->
           if start > end_ then Block ([], annotation) else else_
       | _ -> else_)
-  |While(test, body, annotation) -> (
+  | While (test, body, annotation) -> (
       let simplified_test = simplify_expression test in
       match simplified_test with
       | Const_bool (false, _) -> Block ([], annotation)
