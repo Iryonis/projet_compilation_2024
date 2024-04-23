@@ -113,6 +113,9 @@ let rec rename_statement statement env =
               rename_expr expr3 env,
               rename_statement statement statement_copy,
               annotation ))
+  |While(test, statement, annotation) -> (
+      let statement_copy = Environment.copy env in
+      While(rename_expr test env, rename_statement statement statement_copy, annotation))
   | Foreach (id, test, body, annotation) -> (
       let body_env = Environment.copy env in
       match Environment.get env id with

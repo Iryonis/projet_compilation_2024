@@ -358,6 +358,15 @@ let rec type_statement type_environment report stmt =
       let env = Environment.copy type_environment in
       Environment.add env name t_start;
       type_statement env report body
+  |While(test, body, ann) ->
+      let t_test = type_expression type_environment report test in
+      if t_test <> Type_bool then
+        Error_report.add_error report
+          ( Format.sprintf "While test is a %s but should be a Bool"
+              (string_of_type_expression t_test),
+            Annotation.get_pos ann ); 
+            let env = Environment.copy type_environment in
+            type_statement env report body
   | Foreach (name, e, body, ann) ->
       let t = type_expression type_environment report e in
       let t_var =

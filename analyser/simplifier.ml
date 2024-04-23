@@ -282,6 +282,11 @@ let rec simplify_statement (statement : Ast.statement) =
       | Const_real (start, _), Const_real (end_, _) ->
           if start > end_ then Block ([], annotation) else else_
       | _ -> else_)
+  |While(test, body, annotation) -> (
+      let simplified_test = simplify_expression test in
+      match simplified_test with
+      | Const_bool (false, _) -> Block ([], annotation)
+      | _ -> While (simplified_test, simplify_statement body, annotation))
   | Foreach (name, list, body, annotation) -> (
       let simplified_list = simplify_expression list in
       match simplified_list with

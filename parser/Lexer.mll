@@ -68,6 +68,7 @@ rule token = parse
     | "["               { L_SQ_BRK }
     | "]"               { R_SQ_BRK }
     (* Extension *)
+    | "While"           { WHILE }
     | "?"               { QUESTION }
     | "**2"              { POW2 }
     (* Fin de l'extension *)

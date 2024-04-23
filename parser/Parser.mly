@@ -65,6 +65,7 @@
 %token L_SQ_BRK
 %token R_SQ_BRK
 (* Extension *)
+%token WHILE
 %token QUESTION
 %token POW2
 (* Fin de Extension *)
@@ -119,6 +120,7 @@ statement:
 | FOREACH id = ID IN expr = expression stmt = statement { Foreach(id,expr,stmt,Annotation.create $loc) }
 | DRAW LPAR expr = expression RPAR { Draw_pixel(expr,Annotation.create $loc) }
 | PRINT LPAR expr = expression RPAR { Print(expr,Annotation.create $loc) }
+| WHILE LPAR test = expression RPAR stmt = statement { While(test,stmt,Annotation.create $loc) }
 | { Nop }
 
 statement_list:

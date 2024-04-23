@@ -298,6 +298,10 @@ let rec interpret_statement environment = function
                ann ))
       done
       (* Environment.remove_layer environment *)
+  | While (test, statement, _) ->
+      while (interpret_expression environment test) = Bool true do
+        interpret_statement environment statement
+      done
   | Foreach (name, list, body, _) -> (
       match interpret_expression environment list with
       | List l ->

@@ -74,6 +74,7 @@ type statement =
   | IfThenElse of expression * statement * statement * Annotation.t
   | For of
       string * expression * expression * expression * statement * Annotation.t
+  | While of expression * statement * Annotation.t
   | Foreach of string * expression * statement * Annotation.t
   | Draw_pixel of expression * Annotation.t
   | Nop
@@ -191,6 +192,9 @@ let rec pp_statement fmt = function
         (string_of_expression from_expression)
         (string_of_expression to_expression)
         (string_of_expression step_expression)
+        pp_statement statement
+  | While (test, statement, _) ->
+      Format.fprintf fmt "@[<v 2>While (%s)@,%a@]" (string_of_expression test)
         pp_statement statement
   | Foreach (name, expression, statement, _) ->
       Format.fprintf fmt "@[<v 2>Foreach %s In %s@,%a@]" name

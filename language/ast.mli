@@ -103,6 +103,8 @@ type statement =
   | For of
       string * expression * expression * expression * statement * Annotation.t
       (** For loop. [For(str,init,target,step,body,annot)] starts by initialising variable [str] (which must be declared) to the value of [init], and executes [body] and then increments [str] by the value of [step] as long as the value in [str] is smaller than that of [target]. [target] is reevaluated at each step. Can be used for {!Type_int} or {!Type_real} variables*)
+  | While of expression * statement * Annotation.t
+        (** While loop. [While(cond,body,annot)] executes [body] as long as [cond] is true. [cond] is reevaluated at each step*)
   | Foreach of string * expression * statement * Annotation.t
       (** [Foreach(str,list,body,annotation)] requires that [list] is a {!Type_list}. It applies [body] to every element of the list (from left to right). In [body], the current element of the loop is stored in variable [str] (which is not required to be declared)*)
   | Draw_pixel of expression * Annotation.t
