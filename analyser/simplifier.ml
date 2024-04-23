@@ -29,27 +29,31 @@ let rec simplify_expression (expr : Ast.expression) =
   | Pixel (coord, color, annotation) ->
       Pixel (simplify_expression coord, simplify_expression color, annotation)
   | Unary_operator (op, e, annotation) -> (
-      let simplified_e = simplify_expression e in
-      match simplified_e with
-      | Const_int (i, _) -> (
-          match op with
-          | Opposite -> Const_int (-i, annotation)
-          | Real_of_int -> Const_real (float_of_int i, annotation)
-          | _ -> Unary_operator (op, simplified_e, annotation))
-      | Const_real (r, _) -> (
-          match op with
-          | Opposite -> Const_real (-.r, annotation)
-          | Floor -> Const_int (int_of_float r, annotation)
-          | Cos -> Const_real (Float.cos r, annotation)
-          | Sin -> Const_real (Float.sin r, annotation)
-          | _ -> Unary_operator (op, simplified_e, annotation))
-      | Const_bool (b, _) -> (
-          match op with
-          | Not -> Const_bool (not b, annotation)
-          | _ -> Unary_operator (op, simplified_e, annotation))
-      | List (l, _) ->
-          List (List.map (fun e -> simplify_expression e) l, annotation)
-      | _ -> Unary_operator (op, simplified_e, annotation))
+      match e with
+      | Unary_operator (Real_of_int, Const_int (n, _), _) when op = Floor ->
+          Const_int (n, annotation)
+      | _ -> (
+          let simplified_e = simplify_expression e in
+          match simplified_e with
+          | Const_int (i, _) -> (
+              match op with
+              | Opposite -> Const_int (-i, annotation)
+              | Real_of_int -> Const_real (float_of_int i, annotation)
+              | _ -> Unary_operator (op, simplified_e, annotation))
+          | Const_real (r, _) -> (
+              match op with
+              | Opposite -> Const_real (-.r, annotation)
+              | Floor -> Const_int (int_of_float r, annotation)
+              | Cos -> Const_real (Float.cos r, annotation)
+              | Sin -> Const_real (Float.sin r, annotation)
+              | _ -> Unary_operator (op, simplified_e, annotation))
+          | Const_bool (b, _) -> (
+              match op with
+              | Not -> Const_bool (not b, annotation)
+              | _ -> Unary_operator (op, simplified_e, annotation))
+          | List (l, _) ->
+              List (List.map (fun e -> simplify_expression e) l, annotation)
+          | _ -> Unary_operator (op, simplified_e, annotation)))
   | Binary_operator (op, e1, e2, annotation) -> (
       let simplified_e1 = simplify_expression e1 in
       match simplified_e1 with
@@ -93,6 +97,18 @@ let rec simplify_expression (expr : Ast.expression) =
                     (Binary_operator
                        (op, Const_int (i1, annotation), b, annotation)),
                   annotation )
+          (*Cast implicite*)
+          | Const_real (_, _) ->
+              let a =
+                Annotation.create (Lexing.dummy_pos, Lexing.dummy_pos)
+                (*On ne savait pas comment mettre une position vide*)
+              in
+              let _ = Annotation.set_type a Type_real in
+              Binary_operator
+                ( op,
+                  Unary_operator (Real_of_int, simplified_e1, a),
+                  simplified_e2,
+                  annotation )
           | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Const_real (r1, _) -> (
           let simplified_e2 = simplify_expression e2 in
@@ -113,6 +129,18 @@ let rec simplify_expression (expr : Ast.expression) =
               | _ ->
                   Binary_operator (op, simplified_e1, simplified_e2, annotation)
               )
+          (*Cast implicite*)
+          | Const_int (_, _) ->
+              let a =
+                Annotation.create (Lexing.dummy_pos, Lexing.dummy_pos)
+                (*On ne savait pas comment mettre une position vide*)
+              in
+              let _ = Annotation.set_type a Type_real in
+              Binary_operator
+                ( op,
+                  simplified_e1,
+                  Unary_operator (Real_of_int, simplified_e2, a),
+                  annotation )
           | _ -> Binary_operator (op, simplified_e1, simplified_e2, annotation))
       | Const_bool (b1, _) -> (
           let simplified_e2 = simplify_expression e2 in
@@ -239,25 +267,21 @@ let rec simplify_statement (statement : Ast.statement) =
       let simplified_init = simplify_expression init in
       let simplified_target = simplify_expression target in
       let simplified_increment = simplify_expression increment in
+      let else_ =
+        For
+          ( name,
+            simplified_init,
+            simplified_target,
+            simplified_increment,
+            simplify_statement body,
+            annotation )
+      in
       match (simplified_init, simplified_target) with
       | Const_int (start, _), Const_int (end_, _) ->
-          if start > end_ then Block ([], annotation)
-          else
-            For
-              ( name,
-                simplified_init,
-                simplified_target,
-                simplified_increment,
-                simplify_statement body,
-                annotation )
-      | _ ->
-          For
-            ( name,
-              simplified_init,
-              simplified_target,
-              simplified_increment,
-              simplify_statement body,
-              annotation ))
+          if start > end_ then Block ([], annotation) else else_
+      | Const_real (start, _), Const_real (end_, _) ->
+          if start > end_ then Block ([], annotation) else else_
+      | _ -> else_)
   | Foreach (name, list, body, annotation) -> (
       let simplified_list = simplify_expression list in
       match simplified_list with
