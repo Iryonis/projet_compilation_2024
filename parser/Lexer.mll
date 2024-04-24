@@ -7,7 +7,7 @@
 let alphanum = ['a'-'z' 'A'-'Z' '0'-'9' '_']
 let alphamin = ['a'-'z']
 let digit = ['0'-'9']
-let skip = [' ' '\t' '\r' '\n']
+let skip = [' ' '\t' '\r']
 
 rule token = parse
     | "And"             { AND }
